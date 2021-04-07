@@ -1,80 +1,70 @@
 #include "microshell.h"
 
-int count_tokens(char **cmd, int index, char *next_token)
+extern char **environ;
+
+void redirect_io(int in, int out)
 {
-    int n = 0;
-    while (cmd[index])
+    if (in != 0)
     {
-        if (!strcmp(cmd[index], "|") || !strcmp(cmd[index], ";"))
+        dup2(in, 0);
+        close(in);
+    }
+    if (out != 1)
+        dup2(out, 1);
+}
+
+void ft_putstr_fd(char *str, int fd)
+{
+    while (*str)
+        write(fd, str++, 1);
+}
+
+int execute_command(char **args, int in, int out)
+{
+    int pid;
+    int status;
+
+    pid = fork();
+    if (pid == 0)
+    {
+        redirect_io(in, out);
+        if(execve(args[0],args, environ) == -1)
         {
-            *next_token = cmd[index][0];
-            break;
+            ft_putstr_fd("error: cannot execute ", 2);
+            ft_putstr_fd(args[0], 2);
+            ft_putstr_fd("\n", 2);
+            exit(0);
         }
-        n++;
-        index++;
     }
-    if (!cmd[index] || !cmd[index + 1])
-        *next_token = 'x';
-    return (n);
+    else
+        pid = waitpid(pid, &status, WUNTRACED);
+    return (status);
 }
 
-int get_next_command(char ***cmd, char **argv, char *next_token)
+void set_io(int *in, int *out, char next, char last, int *fd)
 {
-    static int  index;
-    int         n;
-    char        **output;
-    int         i;
-
-    if(*next_token == 'x')
-        return (0);
-    i = 0;
-    n = count_tokens(argv, index, next_token);
-    if (n == 0)
-        return (0);
-    output = (char **)malloc(sizeof(char *) * (n + 1));
-    while (i < n)
-    {
-        output[i] = argv[index + i];
-        i++;
-    }
-    output[i] = 0; 
-    index += i + 1;
-    cmd[0] = output;
-    return (1);
+    *out = (next == '|' ? fd[1] : 1);
+    *in = (last == '|' ? fd[0] : 0);
 }
 
-void    print_tab(char **tab)
-{
-    while (*tab)
-    {
-        printf("%s ", *tab);
-        tab++;
-    }
-    printf("\n");
-}
-
-void    free_tab(char **tab)
-{
-    int i = 0;
-
-    while (tab[i])
-    {
-        free(tab[i]);
-        i++;
-    }
-    free(tab[i]);
-    free(tab);
-}
 int main(int argc, char **argv)
 {
-    char **cmd;
-    char next_token = 'e';
+    char    **cmd;
+    char    next_token,last_token = 'h';
+    int     fd[2];
+    int     in,out;
+    int     status;
 
+    (void)argc;
+    pipe(fd);
     while (get_next_command(&cmd, argv + 1, &next_token))
     {
-        print_tab(cmd);
-        printf("next token : %c\n", (next_token ? next_token : 'x'));
+        set_io(&in ,&out, next_token, last_token, fd);
+        status = execute_command(cmd, in, out);
+        if (out != 1)
+            close(out);
+        last_token = next_token;
         free(cmd);
     }
-    return (0);
+    return (status);
 } 
