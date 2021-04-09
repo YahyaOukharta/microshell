@@ -47,6 +47,27 @@ void set_io(int *in, int *out, char next, char last, int *fd)
     *in = (last == '|' ? fd[0] : 0);
 }
 
+int tab_len(char **tab)
+{
+    int i = 0;
+    while (tab[i])
+        i++;
+    return (i);
+}
+
+int builtin_cd(char **args)
+{
+    if (tab_len(args) != 2)
+        ft_putstr_fd("error: cd: bad arguments\n", 2);
+    else if ((chdir(args[1])) == -1)
+    {
+        ft_putstr_fd("error: cd: cannot change directory to ", 2);
+        ft_putstr_fd(args[1], 2);
+        ft_putstr_fd("\n", 2);
+    }
+    return (0);
+}
+
 int main(int argc, char **argv)
 {
     char    **cmd;
@@ -60,11 +81,14 @@ int main(int argc, char **argv)
     while (get_next_command(&cmd, argv + 1, &next_token))
     {
         set_io(&in ,&out, next_token, last_token, fd);
-        status = execute_command(cmd, in, out);
+        if (!strcmp("cd", cmd[0]))
+            status = builtin_cd(cmd);
+        else
+            status = execute_command(cmd, in, out);
         if (out != 1)
             close(out);
         last_token = next_token;
         free(cmd);
     }
     return (status);
-} 
+}
