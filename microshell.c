@@ -7,10 +7,12 @@ void redirect_io(int in, int out)
     if (in != 0)
     {
         dup2(in, 0);
-        close(in);
     }
     if (out != 1)
+    {
         dup2(out, 1);
+        close(in);
+    }
 }
 
 void ft_putstr_fd(char *str, int fd)
@@ -22,7 +24,7 @@ void ft_putstr_fd(char *str, int fd)
 int execute_command(char **args, int in, int out)
 {
     int pid;
-    int status;
+    int status = MAX_INT;
 
     pid = fork();
     if (pid == 0)
@@ -43,8 +45,10 @@ int execute_command(char **args, int in, int out)
 
 void set_io(int *in, int *out, char next, char last, int *fd)
 {
-    *out = (next == '|' ? fd[1] : 1);
     *in = (last == '|' ? fd[0] : 0);
+    if (next == '|')
+        pipe(fd);
+    *out = (next == '|' ? fd[1] : 1);
 }
 
 int tab_len(char **tab)
@@ -77,7 +81,6 @@ int main(int argc, char **argv)
     int     status;
 
     (void)argc;
-    pipe(fd);
     while (get_next_command(&cmd, argv + 1, &next_token))
     {
         set_io(&in ,&out, next_token, last_token, fd);
@@ -87,6 +90,8 @@ int main(int argc, char **argv)
             status = execute_command(cmd, in, out);
         if (out != 1)
             close(out);
+        if (in != 0)
+            close(in);
         last_token = next_token;
         free(cmd);
     }

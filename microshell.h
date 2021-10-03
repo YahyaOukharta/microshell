@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <sys/wait.h>
 
+#define MAX_INT 2147483647
+
 // Parsing 
 int         count_tokens(char **cmd, int index, char *next_token);
 int         get_next_command(char ***cmd, char **argv, char *next_token);
